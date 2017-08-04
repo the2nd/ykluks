@@ -78,6 +78,7 @@ You may want to make a backup of your current initramfs. You can use the old ini
 
 1. Comment out all lines in crypttab.
 2. Change the line with "rd.luks.uuid=..." in /etc/default/grub to "rd.ykluks.uuid=..."
+3. Change the line with "rd.qubes.hide_all_usb" in /etc/default/grub to "rd.ykluks.hide_all_usb"
 
 
 Now we have to recreate the grub config and the initramfs.
