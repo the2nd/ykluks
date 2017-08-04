@@ -8,6 +8,14 @@ based distributions but there are other more complete tools you may want to try
 For ubuntu based distributions you may want to try this one: https://github.com/cornelinux/yubikey-luks
 
 
+WARNING
+-------
+
+Please note that the current version is tested with a LVM-on-LUKS setup only. The default Qubes OS installation
+is a LVM-on-LUKS setup which will not work yet. Patches for LVM-on-LUKS are welcome as well as experienced testers
+because a dont have a LVM-on-LUKS installation to test with.
+
+
 Initialize Yubikey
 ------------------
 
@@ -30,9 +38,14 @@ Get response from yubikey.
 
 	ykchalresp -2 mypassword
 
+You may want to check which LUKS key slots are currently used. Make sure you use the correct device file.
+This may help if you want to replace your current password with a more secure backup password later.
+
+	sudo cryptsetup LuksDump /dev/sdXX
+
 Use the output from the previous command as new passphrase.
 
-	sudo cryptsetup luksAddKey --key-slot 7 /dev/sdXX
+	sudo cryptsetup luksAddKey --key-slot a_free_key_slot /dev/sdXX
 
 
 Install ykluks
@@ -71,6 +84,17 @@ Now we have to recreate the grub config and the initramfs.
 
 	sudo grub2-mkconfig > /boot/grub2/grub.cfg
 	sudo dracut -f
+
+That's it. After a reboot you should be able to unlock your LUKS partition with your password and your yubikey.
+
+
+Remove normal password and add secure backup password
+-----------------------------------------------------
+If everyting works as expected you may want to replace your (probably) insecure LUKS password with a secure backup password.
+
+Add the new backup password.
+	sudo cryptsetup luksAddKey --key-slot a_free_key_slot /dev/sdXX
+	sudo cryptsetup luksKillslot --key-slot your_old_key_slot /dev/sdXX
 
 
 Something went wrong :(
