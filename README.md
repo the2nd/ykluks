@@ -27,9 +27,11 @@ You need to manually add a new luks slot with the response you get when sending 
 password to the yubikey.
 
 Get response from yubikey.
+
 	ykchalresp -2 mypassword
 
 Use the output from the previous command as new passphrase.
+
 	sudo cryptsetup luksAddKey --key-slot 7 /dev/sdXX
 
 
