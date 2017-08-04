@@ -81,6 +81,6 @@ In case you run into any trouble after ykluks installation you can use the backu
 1. Select the Qubes OS boot entry in the grub boot menu.
 2. Press "e" to get into edit mode.
 3. First we need to change the "rd.ykluks.uuid=..." parameter back to "rd.luks.uuid=...". This is normally in the line that starts with "module /vmlinuz-...".
-4. Then we need get the line that loads the initramfs. This line normally starts with "module --nounzip /initramfs-..". Just append .org to this line.
+4. Then we need to get the line that loads the initramfs. This line normally starts with "module --nounzip /initramfs-..". Just append .org to this line.
 5. Press "CTRL+X" to boot this configuration.
 
