@@ -94,6 +94,7 @@ Remove normal password and add secure backup password
 If everyting works as expected you may want to replace your (probably) insecure LUKS password with a secure backup password.
 
 Add the new backup password.
+
 	sudo cryptsetup luksAddKey --key-slot a_free_key_slot /dev/sdXX
 	sudo cryptsetup luksKillslot --key-slot your_old_key_slot /dev/sdXX
 
