@@ -7,8 +7,12 @@ if [ -f "$YKLUKS_CONF" ] ; then
 	. "$YKLUKS_CONF"
 fi
 
-#LUKS_UUID="$(cat /proc/cmdline | tr ' ' '\n' | grep rd.ykluks.uuid | cut -d '=' -f 2 | cut -d '-' -f 2-)"
-LUKS_UUID="$(getarg rd.ykluks.uuid | cut -d '-' -f 2-)"
+LUKS_UUIDS="$(getarg rd.ykluks.uuid | cut -d '-' -f 2- | tr ',' '\n')"
+
+display_msg () {
+	local MSG="$1"
+	(plymouth display-message --text="$MSG";sleep 1;plymouth hide-message --text="$MSG") &
+}
 
 hide_devices () {
 	# Find all networking devices currenly installed...
@@ -35,7 +39,6 @@ hide_devices () {
 }
 
 handle_yubikey () {
-	LUKS_DEV="$(blkid -U "$LUKS_UUID")"
 	WAIT_COUNTER="0"
 	YUBIKEY_MSG="Please insert your yubikey..."
 	while ! ykchalresp -2 test > /dev/null 2>&1 ; do
@@ -50,29 +53,40 @@ handle_yubikey () {
 		if [ "$YUBIKEY_MSG" == "" ] ; then
 			sleep 1
 		else
-			plymouth display-message --text="$YUBIKEY_MSG"
-			HIDE_MSG="$YUBIKEY_MSG"
+			display_msg "$YUBIKEY_MSG"
 			YUBIKEY_MSG=""
 		fi
 	done
 
-	if [ "$HIDE_MSG" != "" ] ; then
-		plymouth hide-message --text="$HIDE_MSG"
-	fi
-
 	while true ; do
 		YUBIKEY_PASS="$(/usr/bin/systemd-ask-password --no-tty "$YKLUKS_PROMPT")"
 		LUKS_PASSPHRASE="$(ykchalresp -2 "$YUBIKEY_PASS")"
-		if echo "$LUKS_PASSPHRASE" | cryptsetup luksOpen "$LUKS_DEV" luks-$LUKS_UUID ; then
+		YUBIKEY_MSG="Received response from yubikey."
+		display_msg "$YUBIKEY_MSG"
+		LUKS_OPEN_FAILURE="false"
+		for UUID in $LUKS_UUIDS ; do
+			DEV="$(blkid -U "$UUID")"
+			if echo "$LUKS_PASSPHRASE" | cryptsetup luksOpen "$DEV" luks-$UUID ; then
+				LUKS_MSG="Luks device opened successful: $DEV"
+				display_msg "$LUKS_MSG"
+			else
+				LUKS_MSG="Failed to open luks device: $DEV (Wrong password?)"
+				display_msg "$LUKS_MSG"
+				LUKS_OPEN_FAILURE="true"
+			fi
+		done
+		if ! $LUKS_OPEN_FAILURE ; then
 			break
 		fi
 	done
-
 }
 
-if [ "$LUKS_UUID" != "" ] ; then
+if [ "$LUKS_UUIDS" != "" ] ; then
 	handle_yubikey
 fi
+
+rm /etc/udev/rules.d/69-yubikey.rules
+systemctl daemon-reload
 
 # Make sure we hide devices from dom0 after yubikey/luks setup.
 hide_devices

@@ -49,7 +49,6 @@ install() {
         $systemdsystemunitdir/systemd-ask-password-console.path \
         $systemdsystemunitdir/systemd-ask-password-console.service \
         systemd-ask-password systemd-tty-ask-password-agent
-
     dracut_need_initqueue
 }
 
