@@ -24,6 +24,7 @@ install() {
     inst find
     inst blkid
     inst lsusb
+    inst cryptsetup
     inst ykchalresp
     # Stolen from qubes-pciback module.
     inst lspci
