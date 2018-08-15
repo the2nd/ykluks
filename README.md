@@ -12,8 +12,8 @@ WARNING
 -------
 
 Please note that the current version is tested with a LVM-on-LUKS setup only. The default Qubes OS installation
-is a LVM-on-LUKS setup which will not work yet. Patches for LVM-on-LUKS are welcome as well as experienced testers
-because a dont have a LVM-on-LUKS installation to test with.
+is a LUKS-on-LVM setup which will not work yet. Patches for LUKS-on-LVM are welcome as well as experienced testers
+because a dont have a LUKS-on-LVM installation to test with.
 
 
 Initialize Yubikey
