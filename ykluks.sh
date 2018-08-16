@@ -2,6 +2,16 @@
 
 type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
 
+# Set defaults.
+YK_SLOT="2"
+YK_MAX_WAIT="60"
+MESSAGE_TIMEOUT="10"
+SHOW_YK_INSERT_MSG="false"
+LUKS_PROMPT="Passphrase"
+YKLUKS_PROMPT="Password"
+LUKS_PASSPHRASE_FALLBACK="false"
+
+# Load config file.
 YKLUKS_CONF="/etc/ykluks.conf"
 if [ -f "$YKLUKS_CONF" ] ; then
 	. "$YKLUKS_CONF"
@@ -9,9 +19,19 @@ fi
 
 LUKS_UUIDS="$(getarg rd.ykluks.uuid | cut -d '-' -f 2- | tr ',' '\n')"
 
+display_msg_timeout () {
+	local MSG="$1"
+	(plymouth display-message --text="$MSG";sleep $MESSAGE_TIMEOUT;plymouth hide-message --text="$MSG") &
+}
+
 display_msg () {
 	local MSG="$1"
-	(plymouth display-message --text="$MSG";sleep 1;plymouth hide-message --text="$MSG") &
+	plymouth display-message --text="$MSG" &
+}
+
+hide_msg () {
+	local MSG="$1"
+	plymouth hide-message --text="$MSG" &
 }
 
 hide_devices () {
@@ -40,38 +60,52 @@ hide_devices () {
 
 handle_yubikey () {
 	WAIT_COUNTER="0"
+	YUBIKEY_TEST=""
 	YUBIKEY_MSG="Please insert your yubikey..."
-	while ! ykchalresp -2 test > /dev/null 2>&1 ; do
-		if [ "$WAIT_COUNTER" -lt 3 ] ; then
-			WAIT_COUNTER="$[$WAIT_COUNTER+1]"
-			sleep 1
-			continue
-		fi
+	while ! YUBIKEY_TEST="$(ykchalresp -"$YK_SLOT" test 2> /dev/null)" ; do
 		if [ "$SHOW_YK_INSERT_MSG" != "true" ] ; then
-			exit
+			break
 		fi
-		if [ "$YUBIKEY_MSG" == "" ] ; then
-			sleep 1
-		else
+
+		if [ "$YUBIKEY_MSG" != "" ] ; then
 			display_msg "$YUBIKEY_MSG"
+			HIDE_MSG="$YUBIKEY_MSG"
 			YUBIKEY_MSG=""
 		fi
+
+		if [ "$WAIT_COUNTER" -ge "$YK_MAX_WAIT" ] ; then
+			break
+		fi
+
+		WAIT_COUNTER="$[$WAIT_COUNTER+1]"
+		sleep 1
 	done
 
+	if [ "$HIDE_MSG" != "" ] ; then
+		hide_msg "$HIDE_MSG"
+	fi
+
 	while true ; do
-		YUBIKEY_PASS="$(/usr/bin/systemd-ask-password --no-tty "$YKLUKS_PROMPT")"
-		LUKS_PASSPHRASE="$(ykchalresp -2 "$YUBIKEY_PASS")"
-		YUBIKEY_MSG="Received response from yubikey."
-		display_msg "$YUBIKEY_MSG"
+		if [ "$YUBIKEY_TEST" == "" ] ; then
+			if [ "$LUKS_PASSPHRASE_FALLBACK" != "true" ] ; then
+				break
+			fi
+			LUKS_PASSPHRASE="$(/usr/bin/systemd-ask-password --no-tty "$LUKS_PROMPT")"
+		else
+			YUBIKEY_PASS="$(/usr/bin/systemd-ask-password --no-tty "$YKLUKS_PROMPT")"
+			LUKS_PASSPHRASE="$(ykchalresp -"$YK_SLOT" "$YUBIKEY_PASS")"
+			YUBIKEY_MSG="Received response from yubikey."
+			display_msg_timeout "$YUBIKEY_MSG"
+		fi
 		LUKS_OPEN_FAILURE="false"
 		for UUID in $LUKS_UUIDS ; do
 			DEV="$(blkid -U "$UUID")"
 			if echo "$LUKS_PASSPHRASE" | cryptsetup luksOpen "$DEV" luks-$UUID ; then
 				LUKS_MSG="Luks device opened successful: $DEV"
-				display_msg "$LUKS_MSG"
+				display_msg_timeout "$LUKS_MSG"
 			else
 				LUKS_MSG="Failed to open luks device: $DEV (Wrong password?)"
-				display_msg "$LUKS_MSG"
+				display_msg_timeout "$LUKS_MSG"
 				LUKS_OPEN_FAILURE="true"
 			fi
 		done
