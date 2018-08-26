@@ -17,7 +17,7 @@ if [ -f "$YKLUKS_CONF" ] ; then
 	. "$YKLUKS_CONF"
 fi
 
-LUKS_UUIDS="$(getarg rd.ykluks.uuid | cut -d '-' -f 2- | tr ',' '\n')"
+LUKS_UUIDS="$(getargs rd.ykluks.uuid | tr ' ' '\n'| cut -d '-' -f 2-)"
 
 display_msg_timeout () {
 	local MSG="$1"
